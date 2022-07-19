@@ -16,6 +16,8 @@ import yake
 from summa import keywords
 
 from google_trends import getRealtimeTrends
+
+
 # import nltk
 # nltk.download('punkt')
 
@@ -44,6 +46,7 @@ def process_key_word_yake(text):
     #     print(kw)
     # print(','.join(keywords_to_save))
     return ','.join(keywords_to_save)
+
 
 def process_keyword_rake(text):
     punctuations = ".,;:?!()'\""
@@ -170,10 +173,10 @@ def saveNewsToDb():
     #         print("MySQL connection is closed")
 
 
-def crawl_list_by_topic(topic):
-    main_url = 'https://vnexpress.net/'
-    url_topic = main_url + topic
-    html_text = requests.get(url_topic).text
+def crawl_by_url(url, topicLv1, topicLv2, topicLv3):
+    # main_url = 'https://vnexpress.net/'
+    # url_topic = main_url + topic
+    html_text = requests.get(url).text
     soup = BeautifulSoup(html_text, 'html.parser')
     title = ''
     link = ''
@@ -183,24 +186,35 @@ def crawl_list_by_topic(topic):
         connection = mysql.connector.connect(host='localhost', database='news', user='root', password='Trongduc2206')
         # print(connection)
         cursor = connection.cursor();
+        insert_num = 0
+        exist_num = 0
         for article in soup.find_all('article'):
-            if article.find('h2'):
-                titleLink = article.find('h2').find('a')
+            if article.find('h2') or article.find('h4'):
+                if article.find('h2'):
+                    titleLink = article.find('h2').find('a')
+                else:
+                    titleLink = article.find('h4').find('a')
                 # if titleLink.get('title'):
                 #     title = titleLink.get('title')
                 # else :
                 #     title = titleLink.text
                 link = titleLink.get('href')
                 select_sql = 'select * from news where news_key = %s'
-                news_key_to_query = (link, )
+                news_key_to_query = (link,)
                 # news_key_to_query = ('https://vnexpress.net/quoc-hoi-se-xem-xet-bai-nhiem-ong-nguyen-thanh-long-4472897.html', )
                 cursor.execute(select_sql, news_key_to_query)
                 result = cursor.fetchone()
                 # print(result)
                 # break
+                # topicLv2ToInsert = None
                 if result is None:
                     print('not exist')
-                    sql = 'insert into news (title, topic_id_lv1, topic_id_lv2, topic_id_lv3, content, image_url, summary, pub_date, keyword, news_key, status, create_time, update_time) values (%s, 6, 52, 108, %s, %s, %s, %s, %s, %s, 1, now(), now() )'
+                    if topicLv3 is not None:
+                        sql = f'insert into news (title, topic_id_lv1, topic_id_lv2, topic_id_lv3, content, image_url, summary, pub_date, keyword, news_key, status, create_time, update_time) values (%s, {topicLv1}, {topicLv2}, {topicLv3}, %s, %s, %s, %s, %s, %s, 1, now(), now() )'
+                    elif topicLv2 is not None:
+                        sql = f'insert into news (title, topic_id_lv1, topic_id_lv2, content, image_url, summary, pub_date, keyword, news_key, status, create_time, update_time) values (%s, {topicLv1}, {topicLv2}, %s, %s, %s, %s, %s, %s, 1, now(), now() )'
+                    else:
+                        sql = f'insert into news (title, topic_id_lv1, content, image_url, summary, pub_date, keyword, news_key, status, create_time, update_time) values (%s, {topicLv1}, %s, %s, %s, %s, %s, %s, 1, now(), now() )'
                     # sql = 'insert into news (title, topic_id_lv1, topic_id_lv2, content, image_url, summary, pub_date, keyword, news_key, status, create_time, update_time) values (%s, 4, 38, %s, %s, %s, %s, %s, %s, 1, now(), now() )'
                     val = crawl(link)
                     print(val)
@@ -208,26 +222,41 @@ def crawl_list_by_topic(topic):
 
                     connection.commit()
                     print("inserted 1 record with id", cursor.lastrowid)
+                    insert_num += 1
                 else:
                     print('this new existed')
-                # break
-                # sql = 'insert into news (title, topic_id, content, image_url, abstract, pub_date, keyword, news_key, status, create_time, update_time) values (%s, 15, %s, %s, %s, %s, %s, %s, 1, now(), now() )'
-                # val = crawl(link)
-                # print(val)
-                # cursor.execute(sql, val)
-                #
-                # connection.commit()
-                # print("inserted 1 record with id", cursor.lastrowid)
+                    exist_num += 1
+        return {
+            "status": "success",
+            "data": {
+                "inserted": insert_num,
+                "existed": exist_num
+            },
+            "error": None
+        }
+        # break
+        # sql = 'insert into news (title, topic_id, content, image_url, abstract, pub_date, keyword, news_key, status, create_time, update_time) values (%s, 15, %s, %s, %s, %s, %s, %s, 1, now(), now() )'
+        # val = crawl(link)
+        # print(val)
+        # cursor.execute(sql, val)
+        #
+        # connection.commit()
+        # print("inserted 1 record with id", cursor.lastrowid)
 
-            # if article.find('p'):
-            #     descriptionLink = article.find('p').find('a')
-            #     description = descriptionLink.text
-            #     if article.find('div', {'class':'thumb-art'}):
-            #         image = article.find('div', {'class':'thumb-art'}).find('a').find('picture').find('img')
-            #         imageUrl = image.get('src')
-            #         print('Title: ' + title + " link " + link + " description " + description + " image url " + imageUrl)
+        # if article.find('p'):
+        #     descriptionLink = article.find('p').find('a')
+        #     description = descriptionLink.text
+        #     if article.find('div', {'class':'thumb-art'}):
+        #         image = article.find('div', {'class':'thumb-art'}).find('a').find('picture').find('img')
+        #         imageUrl = image.get('src')
+        #         print('Title: ' + title + " link " + link + " description " + description + " image url " + imageUrl)
     except mysql.connector.Error as error:
         print("Failed to create table in MySQL: {}".format(error))
+        return {
+            "status": "fail",
+            "data": None,
+            "error": "Failed to create table in MySQL: {}".format(error)
+        }
 
 
 def crawl_topic():
@@ -237,25 +266,26 @@ def crawl_topic():
     for li in soup.find_all('li'):
         print(li);
 
+
 from pyvi import ViTokenizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 import numpy as np
 
 
-def similarity_cal(article_list, recommendNum):
-# def similarity_cal():
-#     text1 = get_article_text('https://vnexpress.net/nha-tuyen-dung-xay-dung-hinh-anh-thuong-hieu-the-nao-4476698.html')
-#     text2 = get_article_text('https://vnexpress.net/gan-50-lao-dong-muon-chuyen-viec-sau-dich-4476124.html')
-#     text3 = get_article_text('https://vnexpress.net/cong-nhan-mong-giam-tuoi-huu-hon-ha-nam-dong-bhxh-4475064.html')
-#     text4 = get_article_text('https://vnexpress.net/lo-ngai-cong-nhan-khong-duoc-tang-luong-tu-1-7-4476920.html')
-#     text5 = get_article_text('https://vnexpress.net/ngan-hang-nha-nuoc-se-tang-tan-suat-ban-ngoai-te-4478470.html')
-#     trends = getRealtimeTrends()
+def similarity_cal(article_list, recommendNum, historyNum):
+    # def similarity_cal():
+    #     text1 = get_article_text('https://vnexpress.net/nha-tuyen-dung-xay-dung-hinh-anh-thuong-hieu-the-nao-4476698.html')
+    #     text2 = get_article_text('https://vnexpress.net/gan-50-lao-dong-muon-chuyen-viec-sau-dich-4476124.html')
+    #     text3 = get_article_text('https://vnexpress.net/cong-nhan-mong-giam-tuoi-huu-hon-ha-nam-dong-bhxh-4475064.html')
+    #     text4 = get_article_text('https://vnexpress.net/lo-ngai-cong-nhan-khong-duoc-tang-luong-tu-1-7-4476920.html')
+    #     text5 = get_article_text('https://vnexpress.net/ngan-hang-nha-nuoc-se-tang-tan-suat-ban-ngoai-te-4478470.html')
+    #     trends = getRealtimeTrends()
 
     corpus = article_list
     # corpus = [text1, text2, text5, text3, text4]
     print(len(corpus))
-    history_news_num = 10
+    history_news_num = historyNum
     today_news_num = len(corpus) - history_news_num
     print("number of today news", today_news_num)
 
@@ -295,7 +325,7 @@ def similarity_cal_single(article_list, recommendNum):
     corpus = article_list
     # corpus = [text1, text2, text5, text3, text4]
     print(len(corpus))
-    history_news_num = 1
+    history_news_num = 10
     today_news_num = len(corpus) - history_news_num
     print("number of today news", today_news_num)
 
@@ -353,7 +383,10 @@ def similarity_cal_test():
 if __name__ == '__main__':
     # res = crawl('https://vnexpress.net/ngay-dau-thu-phi-cang-bien-hon-8-ty-dong-4446845.html')
 
-    crawl_list_by_topic('bong-da/bong-da-trong-nuoc')
+    crawl_by_url('https://vnexpress.net/bong-da/bong-da-trong-nuoc')
+
+    num = 2
+    print(f"this is {num}")
     # crawl_topic()
 
     # print(res)
