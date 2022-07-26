@@ -18,8 +18,8 @@ def recommend():
     rs_dict = {
         "data": rs
     }
-    return rs_dict
-    # return rs
+    # return rs_dict
+    return rs
 
 
 @app.route("/recommend/single", methods=['POST'])

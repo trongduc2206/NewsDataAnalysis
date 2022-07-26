@@ -317,15 +317,22 @@ def similarity_cal(article_list, recommendNum, historyNum):
     print(points_np)
     ind = np.argpartition(points_np, -recommendNum)[-recommendNum:]
     print(ind)
+    value = []
+    for index in ind.tolist():
+        print(points_np[index])
+        value.append(points_np[index])
     # ind_list = ind.tolist()
-    return ind.tolist()
-
+    # return ind.tolist()
+    return {
+            "data": ind.tolist(),
+            "point": value
+        }
 
 def similarity_cal_single(article_list, recommendNum):
     corpus = article_list
     # corpus = [text1, text2, text5, text3, text4]
     print(len(corpus))
-    history_news_num = 10
+    history_news_num = 1
     today_news_num = len(corpus) - history_news_num
     print("number of today news", today_news_num)
 
@@ -357,8 +364,14 @@ def similarity_cal_single(article_list, recommendNum):
     print(points_np)
     ind = np.argpartition(points_np, -recommendNum)[-recommendNum:]
     print(ind)
+    value = []
+    for index in ind.tolist():
+        print(points_np[index])
+        value.append(points_np[index])
     # ind_list = ind.tolist()
+    print(value)
     return ind.tolist()
+
 
 
 def similarity_cal_test():
